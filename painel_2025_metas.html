@@ -3,7 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Painel de Metas 2025 – PCRJ</title>
+  <title>Painel de Metas 2025 – SMA</title>
+  <!-- Chart.js for analysis dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF and html2canvas for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #0b0f19;
@@ -23,148 +28,176 @@
       --green: #22c55e;
       --blue: #3b82f6;
     }
+
+    body.light-theme {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --card: #ffffff;
+      --elev: #f8fafc;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+    }
+
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; transition: background-color 0.3s ease; }
     body {
       margin: 0;
-      background: radial-gradient(1200px 700px at 80% -20%, rgba(101,136,255,.12), transparent 60%),
-                  radial-gradient(800px 500px at -10% 30%, rgba(16,185,129,.12), transparent 60%),
-                  var(--bg);
+      background: var(--bg);
       color: var(--text);
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
       -webkit-font-smoothing: antialiased;
       line-height: 1.4;
     }
     header {
-      position: sticky; top: 0; z-index: 5;
+      position: sticky; top: 0; z-index: 10;
       backdrop-filter: blur(8px);
-      background: linear-gradient(180deg, rgba(11,15,25,.85), rgba(11,15,25,.6) 70%, transparent);
-      border-bottom: 1px solid rgba(159,179,200,.08);
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      border-bottom: 1px solid var(--line);
+      transition: background-color 0.3s ease, border-color 0.3s ease;
     }
     .bar {
       max-width: 1200px; margin: 0 auto; padding: 16px 20px;
       display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
     }
-    .title {
-      display: flex; gap: 12px; align-items: center;
-    }
+    .title { display: flex; gap: 12px; align-items: center; }
     .logo {
       width: 36px; height: 36px; border-radius: 10px;
       background: linear-gradient(135deg, var(--blue), var(--purple));
-      display: grid; place-items: center; font-weight: 700;
+      display: grid; place-items: center; font-weight: 700; color: #fff;
       box-shadow: 0 8px 24px rgba(59,130,246,.35), inset 0 0 20px rgba(255,255,255,.06);
     }
     .title h1 { margin: 0; font-size: 18px; letter-spacing: .2px; }
     .title .sub { color: var(--muted); font-size: 12px; }
-    .controls {
-      display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
-    }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .chip, .btn {
-      background: linear-gradient(180deg, #0f1a2c, #0b1220);
-      color: var(--text);
-      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--text); border: 1px solid var(--line);
       padding: 10px 12px; border-radius: 10px; font-size: 14px;
       display: inline-flex; gap: 8px; align-items: center;
-      cursor: pointer; transition: .2s ease;
+      cursor: pointer; transition: all .2s ease;
     }
-    .chip:hover, .btn:hover { border-color: rgba(159,179,200,.3); transform: translateY(-1px); }
+    .chip:hover, .btn:hover { border-color: color-mix(in srgb, var(--muted) 50%, transparent); transform: translateY(-1px); }
     .chip input, .chip select {
       background: transparent; border: 0; color: var(--text); outline: none;
       font: inherit; min-width: 160px;
     }
-    .btn.accent { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; }
+    .btn.accent { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #fff;}
     .btn.accent:hover { filter: brightness(1.05); }
     main { max-width: 1200px; margin: 12px auto 56px; padding: 0 20px; }
-    .kpis {
-      display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; margin: 12px 0 4px;
-    }
-    .kpi {
-      grid-column: span 3;
-      background: linear-gradient(180deg, #0d1424, #0a1020);
-      border: 1px solid var(--line); border-radius: 16px; padding: 14px;
-      display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
-      transition: .2s ease; position: relative; overflow: hidden;
-    }
-    .kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.25); border-color: rgba(159,179,200,.24); }
-    .badge {
-      width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
-      background: linear-gradient(135deg, rgba(59,130,246,.15), rgba(124,58,237,.12));
-      border: 1px solid rgba(159,179,200,.16);
-    }
-    .kpi h3 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 500; }
-    .kpi .name { font-size: 15px; color: var(--text); margin-top: 2px; font-weight: 600; }
-    .pill {
-      font-size: 12px; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
-      background: linear-gradient(180deg, #0e1626, #0c1322);
-    }
-    .donut { --p: 0; --c: var(--accent);
-      width: 44px; height: 44px; border-radius: 50%;
-      background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(159,179,200,.12) 0);
-      position: relative; border: 4px solid #0a1020;
-    }
-    .donut::after {
-      content: attr(data-label);
-      position: absolute; inset: 0; display: grid; place-items: center;
-      font-size: 11px; color: var(--muted);
-      background: radial-gradient(circle at 50% 50%, #0a1020 37%, transparent 37%);
-    }
-    .grid {
-      display: grid; grid-template-columns: repeat(12,1fr); gap: 14px; margin-top: 12px;
-    }
     .card {
-      grid-column: span 12;
-      background: linear-gradient(180deg, #0f172a, #0a1223);
+      background: var(--card);
       border: 1px solid var(--line); border-radius: 16px; padding: 16px;
-      transition: .2s; position: relative; overflow: hidden;
+      transition: all .2s; position: relative; overflow: hidden;
     }
-    .card:hover { border-color: rgba(159,179,200,.28); }
-    .card .head { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .card:hover { border-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+    .card .head { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; }
     .card h2 { margin: 0; font-size: 16px; }
     .meta-tags { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .tag { font-size: 12px; color: var(--muted); background: #0c1528; border: 1px solid var(--line); padding: 6px 8px; border-radius: 10px; }
+    .tag { font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); padding: 6px 8px; border-radius: 10px; }
     .sections { display: grid; grid-template-columns: repeat(12,1fr); gap: 12px; }
-    .sec { grid-column: span 6; background: linear-gradient(180deg, #0c1426, #091122); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .sec { grid-column: span 6; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
     .sec h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
     ul { margin: 0; padding-left: 18px; }
     li { margin: 6px 0; }
-    .foot { display: flex; gap: 10px; align-items: center; margin-top: 12px; justify-content: space-between; }
+    .foot { display: flex; gap: 10px; align-items: center; margin-top: 12px; justify-content: space-between; flex-wrap: wrap; }
     .ghost { background: transparent; border-color: var(--line); }
     dialog {
-      width: min(880px, 92vw); border: 1px solid var(--line); border-radius: 16px; padding: 0; background: #0b1220; color: var(--text);
+      width: min(980px, 94vw); border: 1px solid var(--line); border-radius: 16px; padding: 0; background: var(--bg); color: var(--text);
       box-shadow: 0 30px 80px rgba(0,0,0,.5);
     }
     dialog::backdrop { background: rgba(3,6,12,.6); backdrop-filter: blur(2px); }
     .modal-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
-    .modal-body { padding: 16px; display: grid; gap: 12px; }
+    .modal-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
+    .modal-content { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
     .close { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-    footer { max-width: 1200px; margin: 24px auto 48px; padding: 0 20px; color: var(--muted); font-size: 12px; }
-    /* Print */
-    @media print {
-      header, .controls, .kpis, .grid, footer { display: none !important; }
-      body { background: #fff; color: #111; }
-      .print { display: block !important; }
+    footer { text-align: center; max-width: 1200px; margin: 24px auto 48px; padding: 0 20px; color: var(--muted); font-size: 12px; }
+    .hidden { display: none !important; }
+
+    /* Timeline */
+    .timeline { padding: 12px 0 4px; }
+    .timeline-bar { position: relative; height: 4px; background: var(--line); border-radius: 2px; }
+    .timeline-marker {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 10px; height: 10px; border-radius: 50%; background: var(--muted);
+      border: 2px solid var(--card);
     }
-    .print { display: none; background: #fff; color: #111; }
-    .print .wrap { max-width: 800px; margin: 0 auto; padding: 20px 12px 60px; }
-    .print h1 { font-size: 22px; margin: 0 0 6px; }
-    .print h2 { font-size: 16px; margin: 18px 0 8px; }
-    .print p, .print li { color: #222; }
-    .hr { height: 1px; background: #ddd; margin: 16px 0; }
-    .pb { page-break-before: always; }
+    .timeline-marker:hover::after {
+      content: attr(data-label); position: absolute; bottom: 100%; left: 50%;
+      transform: translateX(-50%); margin-bottom: 6px; background: var(--elev);
+      padding: 4px 8px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+      border: 1px solid var(--line);
+    }
+
+    /* History Log in Modal */
+    .history-log { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .history-item { border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 13px; }
+    .history-item:last-child { border-bottom: none; }
+    .history-item small { color: var(--muted); display: block; margin-bottom: 4px; }
+    .history-form textarea {
+      width: 100%; background: var(--surface); border: 1px solid var(--line);
+      border-radius: 8px; color: var(--text); padding: 8px; margin-top: 12px;
+      min-height: 60px; font: inherit;
+    }
+
+    /* Summary & Analysis Views */
+    .fullscreen-view {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg); z-index: 20; overflow-y: auto; padding: 20px;
+    }
+    .fullscreen-content { max-width: 900px; margin: 40px auto 100px; }
+    .fullscreen-controls {
+      position: fixed; bottom: 0; left: 0; width: 100%;
+      background: linear-gradient(to top, var(--bg), transparent);
+      padding: 20px; display: flex; justify-content: center; gap: 12px;
+    }
+    .progress-input {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+      color: var(--text); padding: 4px 8px; width: 70px; text-align: center;
+      margin-left: 12px;
+    }
+    .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 24px; }
+    .chart-container { background: var(--surface); padding: 16px; border-radius: 16px; border: 1px solid var(--line); }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) { .chart-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .bar { grid-template-columns: 1fr; gap: 16px; }
+      .controls { justify-content: flex-start; }
+      .modal-content { grid-template-columns: 1fr; }
+      .chip input { min-width: 0; width: 100%; }
+      .foot { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+    @media (max-width: 480px) {
+      .title { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .title h1 { font-size: 16px; }
+      .chip, .btn { width: 100%; justify-content: center; }
+      .chip select { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="bar">
       <div class="title">
-        <div class="logo">M7</div>
+        <div class="logo">SMA</div>
         <div>
-          <h1>Painel de metas 2025 • PCRJ</h1>
-          <div class="sub">Gestão estratégica — RH, finanças e eficiência operacional</div>
+          <h1>Painel de Metas 2025 • SMA</h1>
+          <div class="sub">Secretaria Municipal de Administração</div>
         </div>
       </div>
       <div class="controls">
+        <button class="btn ghost" id="theme-toggle">☀️</button>
+        <button class="btn ghost" id="summaryBtn">📄 Resumo</button>
+        <button class="btn ghost" id="analysisBtn">📊 Análise</button>
+        <button class="btn accent" id="printBtn">🖨️ Imprimir</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="mainDashboard">
+     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
         <label class="chip">
           🔎
           <input id="q" placeholder="Filtrar por palavra-chave..." />
@@ -178,14 +211,7 @@
             <option value="concluido">Concluído</option>
           </select>
         </label>
-        <button class="btn ghost" id="expandAll">Expandir tudo</button>
-        <button class="btn accent" id="printBtn">🧾 Gerar PDF</button>
-      </div>
-    </div>
-  </header>
-
-  <main>
-    <section class="kpis" id="kpis"></section>
+     </div>
     <section class="grid" id="grid"></section>
   </main>
 
@@ -200,178 +226,56 @@
     <div class="modal-body" id="modalBody"></div>
   </dialog>
 
-  <!-- Print (Resumo executivo + detalhes) -->
-  <section class="print" id="print">
-    <div class="wrap" id="printWrap">
-      <h1>Metas estratégicas 2025 – PCRJ</h1>
-      <div>Resumo executivo e detalhamento por meta</div>
-      <div class="hr"></div>
-      <h2>Resumo executivo</h2>
-      <p>
-        Este documento consolida sete metas prioritárias para 2025, com foco em unificação de sistemas de RH, governança
-        de consignados, automação de pagamentos, inteligência em folha, modernização de carreiras, eficiência no mercado
-        livre de energia e desenvolvimento de pessoas. Ele apresenta objetivos, entregas, indicadores, marcos e riscos com
-        respectivas estratégias de mitigação.
-      </p>
-      <ul id="execBullets"></ul>
-      <div class="hr"></div>
-      <div id="printDetails"></div>
+  <!-- Summary View Section -->
+  <section id="summarySection" class="fullscreen-view hidden">
+    <div class="fullscreen-content" id="summaryContent"></div>
+    <div class="fullscreen-controls">
+      <button class="btn ghost" id="backToDashboardBtn">Voltar ao Painel</button>
+      <button class="btn accent" id="printSummaryBtn">🖨️ Gerar PDF do Resumo</button>
+    </div>
+  </section>
+
+  <!-- Analysis View Section -->
+  <section id="analysisSection" class="fullscreen-view hidden">
+    <div class="fullscreen-content">
+        <h1>Análise Estratégica do Portfólio</h1>
+        <p>Visão agregada do status, progresso e riscos das metas estratégicas da SMA para 2025.</p>
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h3>Progresso Médio por Área</h3>
+                <canvas id="progressByAreaChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Distribuição de Metas por Status</h3>
+                <canvas id="statusDistributionChart"></canvas>
+            </div>
+            <div class="chart-container" style="grid-column: 1 / -1;">
+                <h3>Contagem de Riscos por Área</h3>
+                <canvas id="risksByAreaChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="fullscreen-controls">
+      <button class="btn ghost" id="backToDashboardBtn2">Voltar ao Painel</button>
     </div>
   </section>
 
   <footer>
-    Feito para leitura executiva. Filtros, cartões e modais para navegação rápida; impressão inclui resumo executivo seguido de todos os detalhes.
+    Painel de Gestão Estratégica da Secretaria Municipal de Administração (SMA).
+    <br>
+    Desenvolvido por Anderson Carneiro, Coordenador Geral de RH.
   </footer>
 
   <script>
-    const metas = [
-      {
-        id: 1,
-        titulo: "Migração das Empresas Municipais para o ERGON",
-        status: "em_andamento",
-        progresso: 0, // ajuste conforme andamento
-        cor: "var(--blue)",
-        objetivo: "Unificar a gestão de RH/folha das empresas municipais no ERGON, com integridade de dados, aderência normativa e redução de custos operacionais.",
-        entregas: [
-          "Plano diretor de migração por empresa (assessment, mapeamento de dados, cronograma, cutover e reversão).",
-          "Restabelecimento/validação de ambiente de homologação e testes de regressão.",
-          "Scripts de ETL, reconciliação de rubricas e saldos, trilhas de auditoria.",
-          "Manuais e treinamento para usuários-chave e operação."
-        ],
-        indicadores: [
-          "% de empresas migradas dentro do prazo (meta: ≥90%).",
-          "Divergência máxima entre folhas antiga vs. ERGON no mês do go-live (meta: ≤0,10% do total bruto).",
-          "Incidentes críticos pós-go-live por empresa (meta: 0 no D+5; ≤2 no D+30)."
-        ],
-        prazos: "Ondas trimestrais; cada empresa com gate de homologação e aceite formal.",
-        riscos: "Indisponibilidade de ambientes (mitigar com plano de contingência e janelas aprovadas), inconsistências cadastrais (clean-up prévio e testes automatizados)."
-      },
-      {
-        id: 2,
-        titulo: "Revisão do Ecossistema de Consignados (servidor e governança de receita)",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--purple)",
-        objetivo: "Reestruturar convênios de consignado para reduzir o CET ao servidor, ampliar concorrência e transparência, e alinhar a receita institucional a custos de fiscalização/operação — evitando repasses que encareçam o crédito.",
-        entregas: [
-          "Novo regulamento/convênio padrão com: portabilidade ágil, leilão/tabela dinâmica de taxas, limites e transparência de CET; governança de margem.",
-          "Portal de transparência do consignado (taxas, CET, prazos, volumes, reclamações).",
-          "Trilhas de auditoria e SLAs (portabilidade, liquidação, estornos).",
-          "Programa de educação financeira e alerta de superendividamento."
-        ],
-        indicadores: [
-          "Redução do CET médio ponderado (meta: −15% em 12 meses).",
-          "Tempo médio de portabilidade (meta: ≤5 dias úteis).",
-          "% de operações com instituições habilitadas via regras de concorrência (meta: ≥80%).",
-          "Receita institucional limitada e vinculada (meta: 100% lastreada a custos operacionais, sem efeito líquido de aumento ao servidor)."
-        ],
-        prazos: "Novo modelo publicado em 120 dias; adesão de instituições em 180 dias.",
-        riscos: "Repasse de custos ao servidor (mitigar com tetos de CET e competição), litigiosidade (consultoria jurídica prévia e fase de transição)."
-      },
-      {
-        id: 3,
-        titulo: "Gateway Seguro de Remessas e Retornos de Pagamento",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--cyan)",
-        objetivo: "Implantar um hub automatizado e auditável de intercâmbio de arquivos financeiros (remessas/retornos), integrado ao ERGON e bancos parceiros.",
-        entregas: [
-          "Padrões de arquivos e validações (ex.: layouts predefinidos/retornos), versionamento e logs.",
-          "Integração com armazenamento corporativo (drive seguro) e rotinas de conciliação automática.",
-          "Painel de monitoramento (fila, status, erros, SLA) e alarmística."
-        ],
-        indicadores: [
-          "Automação das remessas/retornos (meta: ≥95%).",
-          "Falhas por milhão de transações (meta: ≤3 PPM).",
-          "Tempo de ciclo remessa→confirmação (meta: ≤60 min em dias úteis)."
-        ],
-        prazos: "MVP em 90 dias; full em 150 dias.",
-        riscos: "Indisponibilidade de terceiros (fila resiliente e reprocessamento), erro humano (validações pré-envio e perfis de acesso)."
-      },
-      {
-        id: 4,
-        titulo: "Plataforma de BI de Folha e Pessoas",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--green)",
-        objetivo: "Disponibilizar painéis executivos e analíticos (folha, headcount, cargos, benefícios, encargos), com granularidade por regime jurídico, órgão e unidade, para gestão e controle.",
-        entregas: [
-          "Modelo de dados (DW) e dicionário de rubricas/medidas; camadas de qualidade e histórico.",
-          "Painéis: execução de folha, variações mês a mês, provisões, indicadores de conformidade, trilhas de auditoria.",
-          "Governança de dados (papéis, acessos, LGPD) e capacitação de usuários."
-        ],
-        indicadores: [
-          "Cobertura de rubricas/órgãos (meta: 100%).",
-          "Latência de atualização (meta: D+1).",
-          "Acurácia das medidas-chave (meta: ≥99,9%).",
-          "Adoção (usuários ativos/mês) e NPS interno (meta: ≥70)."
-        ],
-        prazos: "Release inicial em 120 dias; evolução trimestral por sprints.",
-        riscos: "Qualidade de origem (regras de validação), uso indevido (RBAC e logs)."
-      },
-      {
-        id: 5,
-        titulo: "Reestruturação dos Cargos da Administração (proposta legislativa sem aumento de despesa)",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--warn)",
-        objetivo: "Redesenhar carreiras e atribuições da atividade-meio, com regras claras de alocação e mobilidade, mantendo neutralidade orçamentária.",
-        entregas: [
-          "Mapa de macrofunções e famílias ocupacionais; matriz de competências e trilhas de desenvolvimento.",
-          "Diagnóstico de alocação e gargalos; diretrizes de movimentação (lotação, cessão, critérios objetivos).",
-          "Estudo de impacto (custos, riscos, ganhos de eficiência) e minuta de projeto de lei com justificativa técnica."
-        ],
-        indicadores: [
-          "Entrega da proposta legislativa ao Executivo (meta: até T+150 dias).",
-          "Neutralidade fiscal demonstrada (Δ despesa de pessoal = 0).",
-          "Redução de assimetrias de atribuições (meta: ≥80% dos cargos com descrição atualizada e não sobreposta)."
-        ],
-        prazos: "Consulta interna em 60 dias; minuta consolidada em 120; submissão em 150.",
-        riscos: "Dependência de aprovação legislativa (engajamento prévio e notas técnicas), resistência organizacional (participação das áreas e comunicação)."
-      },
-      {
-        id: 6,
-        titulo: "Eficiência tarifária no Mercado Livre de Energia (ACL)",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--pink)",
-        objetivo: "Reduzir o custo unitário médio de energia elétrica das unidades administrativas migradas ao ACL em 2025, buscando ≥20% de redução versus o cenário cativo.",
-        entregas: [
-          "Diagnóstico de cargas e perfil de consumo; estratégia de compras (RFP/leilão/portfólio) e registro na CCEE.",
-          "Contratos com comercializadoras (fixo/índice/PLD com hedge), plano de medição e shadow billing mensal.",
-          "Go-live por ondas trimestrais; relatório bimestral de economia obtida."
-        ],
-        indicadores: [
-          "Indicador principal: Redução percentual do Custo Unitário Total (R$/MWh) ponderado pelo consumo do período.",
-          "Cálculo: CUT = (TE contratada no ACL + TUSD + encargos setoriais/CCEE) ÷ MWh faturado.",
-          "Baseline de comparação (shadow bill): valor que seria pago no mercado cativo para o mesmo consumo e período."
-        ],
-        metas: [
-          "Alvo: redução média ≥20% no conjunto migrado até 31/12/2025.",
-          "Gatilho técnico: ajustar alvo para mínimo assegurado (ex.: ≥12–15%) se estudo prévio indicar potencial inferior; manter 20% como stretch goal."
-        ],
-        prazos: "Entregas conforme ondas trimestrais; relatórios bimestrais de economia.",
-        riscos: "Volatilidade de preços (portfolio ladder/hedge), variação de TUSD (sensibilidade), atraso de migração (contingência e priorização de carga)."
-      },
-      {
-        id: 7,
-        titulo: "Desenvolvimento de Pessoas – 4.000 capacitações certificadas em 2025",
-        status: "em_andamento",
-        progresso: 0,
-        cor: "var(--good)",
-        objetivo: "Ampliar competências técnicas e gerenciais por meio dos Programas de Desenvolvimento, garantindo qualidade, aderência e mensuração de resultados.",
-        entregas: [
-          "Plano Anual de Capacitação com trilhas, catálogo e calendário; conteúdos EAD assíncronos + oficinas síncronas; avaliação de reação e de aprendizado (pré/pós).",
-          "Dashboard mensal com matrículas, conclusões, horas treinadas e distribuição por secretaria; certificação automática."
-        ],
-        indicadores: [
-          "4.000 conclusões certificadas (participações concluídas), sendo ≥60% alinhadas a trilhas prioritárias.",
-          "Taxa de conclusão ≥80% das matrículas; satisfação ≥85% (CSAT/NPS interno).",
-          "Cobertura: alcançar ≥25% dos órgãos/unidades com ao menos um curso ofertado e concluído."
-        ],
-        prazos: "Execução anual com painéis mensais; marcos por trimestre.",
-        riscos: "Baixa adesão (campanhas e turmas in-company), restrição orçamentária (priorizar EAD e parcerias), indisponibilidade operacional (turmas modulares e gravação para reprise)."
-      }
+    // --- DATA STORE (Currently in-memory, will be lost on refresh) ---
+    let metas = [
+      { id: 1, area: "RH", titulo: "Migração das Empresas Municipais para o ERGON", status: "em_andamento", progresso: 25, cor: "var(--blue)", objetivo: "Unificar a gestão de RH/folha das empresas municipais no ERGON, com integridade de dados, aderência normativa e redução de custos operacionais.", entregas: ["Plano diretor de migração por empresa (assessment, mapeamento de dados, cronograma, cutover e reversão).","Restabelecimento/validação de ambiente de homologação e testes de regressão.","Scripts de ETL, reconciliação de rubricas e saldos, trilhas de auditoria.","Manuais e treinamento para usuários-chave e operação."], indicadores: ["% de empresas migradas dentro do prazo: ≥90%","Divergência máxima entre folhas (antiga vs. ERGON) no mês do go-live: ≤0,10% do total bruto","Incidentes críticos pós-go-live por empresa: 0 no D+5; ≤2 no D+30"], prazos: "Ondas trimestrais; cada empresa com gate de homologação e aceite formal.", riscos: "Indisponibilidade de ambientes (mitigar com plano de contingência), inconsistências cadastrais (clean-up prévio e testes automatizados).", startDate: "2025-01-01", endDate: "2025-12-31", marcos: [{label: "Onda 1", date: "2025-03-31"}, {label: "Onda 2", date: "2025-06-30"}, {label: "Onda 3", date: "2025-09-30"}], historico: [{date: "2025-08-01", user: "Gestor", comment: "Início da fase de testes da Onda 1."}] },
+      { id: 2, area: "Finanças", titulo: "Revisão do Ecossistema de Consignados", status: "em_andamento", progresso: 40, cor: "var(--purple)", objetivo: "Reestruturar convênios de consignado para reduzir o CET ao servidor, ampliar concorrência e transparência, e alinhar a receita institucional a custos de fiscalização/operação.", entregas: ["Novo regulamento/convênio padrão com portabilidade ágil e transparência de CET.","Portal de transparência do consignado.","Trilhas de auditoria e SLAs (portabilidade, liquidação).","Programa de educação financeira e alerta de superendividamento."], indicadores: ["Redução do CET médio ponderado: −15% em 12 meses","Tempo médio de portabilidade: ≤5 dias úteis","% de operações com instituições via regras de concorrência: ≥80%","Receita institucional limitada e vinculada: 100% lastreada a custos operacionais."], prazos: "Novo modelo publicado em 120 dias; adesão de instituições em 180 dias.", riscos: "Repasse de custos ao servidor (mitigar com tetos de CET), litigiosidade (consultoria jurídica prévia).", startDate: "2025-02-01", endDate: "2025-07-31", marcos: [{label: "Regulamento", date: "2025-05-31"}, {label: "Adesão", date: "2025-07-31"}], historico: [] },
+      { id: 3, area: "Tecnologia", titulo: "Gateway Seguro de Pagamento", status: "risco", progresso: 80, cor: "var(--cyan)", objetivo: "Implantar um hub automatizado e auditável de intercâmbio de arquivos financeiros, integrado ao ERGON e bancos.", entregas: ["Padrões de arquivos, validações, versionamento e logs.","Integração com armazenamento corporativo e rotinas de conciliação automática.","Painel de monitoramento e alarmística."], indicadores: ["Automação das remessas/retornos: ≥95%","Falhas por milhão de transações (PPM): ≤3","Tempo de ciclo remessa→confirmação: ≤60 min em dias úteis"], prazos: "MVP em 90 dias; full em 150 dias.", riscos: "Indisponibilidade de terceiros (fila resiliente), erro humano (validações pré-envio).", startDate: "2025-03-01", endDate: "2025-08-31", marcos: [{label: "MVP", date: "2025-05-30"}], historico: [{date: "2025-07-20", user: "Gestor", comment: "Dependência com fornecedor de API está atrasando a entrega. Risco elevado."}] },
+      { id: 4, area: "Tecnologia", titulo: "Plataforma de BI de Folha e Pessoas", status: "em_andamento", progresso: 15, cor: "var(--green)", objetivo: "Disponibilizar painéis executivos e analíticos para gestão e controle.", entregas: ["Modelo de dados (DW) e dicionário de rubricas/medidas.","Painéis: execução de folha, variações, provisões, conformidade.","Governança de dados (papéis, acessos, LGPD) e capacitação."], indicadores: ["Cobertura de rubricas/órgãos: 100%","Latência de atualização: D+1","Acurácia das medidas-chave: ≥99,9%","Adoção (NPS interno): ≥70"], prazos: "Release inicial em 120 dias; evolução trimestral.", riscos: "Qualidade de origem (regras de validação), uso indevido (RBAC e logs).", startDate: "2025-01-15", endDate: "2025-05-15", marcos: [{label: "Release 1", date: "2025-05-15"}], historico: [] },
+      { id: 5, area: "RH", titulo: "Reestruturação dos Cargos", status: "concluido", progresso: 100, cor: "var(--warn)", objetivo: "Redesenhar carreiras e atribuições da atividade-meio, com regras claras de alocação e mobilidade, mantendo neutralidade orçamentária.", entregas: ["Mapa de macrofunções e famílias ocupacionais.","Diagnóstico de alocação e gargalos.","Estudo de impacto e minuta de projeto de lei com justificativa técnica."], indicadores: ["Entrega da proposta legislativa ao Executivo: até T+150 dias","Neutralidade fiscal demonstrada (Δ despesa): R$ 0","Redução de assimetrias de atribuições: ≥80% dos cargos com descrição atualizada."], prazos: "Consulta interna em 60 dias; minuta em 120; submissão em 150.", riscos: "Dependência de aprovação legislativa (engajamento prévio), resistência organizacional (participação das áreas).", startDate: "2025-01-01", endDate: "2025-05-31", marcos: [{label: "Submissão", date: "2025-05-30"}], historico: [{date: "2025-05-28", user: "Gestor", comment: "Proposta de lei finalizada e enviada para o gabinete."}] },
+      { id: 6, area: "Finanças", titulo: "Eficiência no Mercado Livre de Energia", status: "em_andamento", progresso: 50, cor: "var(--pink)", objetivo: "Reduzir o custo unitário médio de energia elétrica das unidades no ACL em ≥20% versus o cenário cativo em 2025.", entregas: ["Diagnóstico de cargas e estratégia de compras (RFP/leilão).","Contratos com comercializadoras e plano de medição.","Go-live por ondas trimestrais; relatório bimestral de economia."], indicadores: ["Redução percentual do Custo Unitário Total (R$/MWh): ≥20%","Baseline: Custo que seria pago no mercado cativo (shadow bill)."], prazos: "Meta de redução a ser atingida até 31/12/2025.", riscos: "Volatilidade de preços (portfolio ladder/hedge), variação de TUSD (cenários de sensibilidade).", startDate: "2025-01-01", endDate: "2025-12-31", marcos: [{label: "Go-Live", date: "2025-06-30"}, {label: "Meta", date: "2025-12-31"}], historico: [] },
+      { id: 7, area: "RH", titulo: "Desenvolvimento de Pessoas", status: "em_andamento", progresso: 65, cor: "var(--good)", objetivo: "Ampliar competências técnicas e gerenciais, realizando 4.000 capacitações certificadas em 2025.", entregas: ["Plano Anual de Capacitação com trilhas e catálogo de cursos.","Conteúdos EAD assíncronos e oficinas síncronas.","Dashboard de acompanhamento e certificação automática."], indicadores: ["Conclusões certificadas: 4.000","Alinhamento a trilhas prioritárias: ≥60%","Taxa de conclusão: ≥80%","Satisfação (CSAT/NPS): ≥85%"], prazos: "Plano anual com entregas contínuas ao longo de 2025.", riscos: "Baixa adesão (campanhas e turmas in-company), restrição orçamentária (priorizar EAD e parcerias).", startDate: "2025-01-01", endDate: "2025-12-31", marcos: [{label: "Q1", date: "2025-03-31"}, {label: "Q2", date: "2025-06-30"}, {label: "Q3", date: "2025-09-30"}], historico: [] }
     ];
 
     const statusMap = {
@@ -380,77 +284,102 @@
       concluido: { label: "Concluído", color: "var(--good)" }
     };
 
-    const kpiEl = document.getElementById('kpis');
+    // --- DOM Elements ---
+    const mainDashboard = document.getElementById('mainDashboard');
+    const summarySection = document.getElementById('summarySection');
+    const analysisSection = document.getElementById('analysisSection');
     const gridEl = document.getElementById('grid');
     const modal = document.getElementById('modal');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
     const modalDot = document.getElementById('modalDot');
+    const summaryContent = document.getElementById('summaryContent');
+    const themeToggleButton = document.getElementById('theme-toggle');
+    let charts = {}; // To hold chart instances
 
-    function renderKpis(list) {
-      kpiEl.innerHTML = "";
-      const totals = {
-        total: list.length,
-        risco: list.filter(m=>m.status==='risco').length,
-        concl: list.filter(m=>m.status==='concluido').length,
-        andamento: list.filter(m=>m.status==='em_andamento').length
-      };
-      const items = [
-        { icon: "🎯", name: "Metas", sub: `${totals.total} iniciativas`, pill: "Portfólio 2025" },
-        { icon: "🚦", name: "Em risco", sub: `${totals.risco}`, pill: "Mitigação ativa" },
-        { icon: "✅", name: "Concluídas", sub: `${totals.concl}`, pill: "Entregas realizadas" },
-        { icon: "🔄", name: "Em andamento", sub: `${totals.andamento}`, pill: "Execução" }
-      ];
-      items.forEach((i,idx)=>{
-        const c = document.createElement('div');
-        c.className = 'kpi';
-        c.innerHTML = `
-          <div class="badge">${i.icon}</div>
-          <div>
-            <h3>${i.pill}</h3>
-            <div class="name">${i.name}</div>
-          </div>
-          <div class="donut" style="--p:${Math.min(100, (idx===3? (totals.andamento/totals.total*100) : idx===1? (totals.risco?50:10) : idx===2? (totals.concl?100:0) : 100)).toFixed(0)}; --c:${idx===1?'var(--warn)':idx===2?'var(--good)':'var(--accent)'}" data-label="${i.sub}"></div>
-        `;
-        kpiEl.appendChild(c);
-      });
+    // --- THEME TOGGLE ---
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            document.body.classList.add('light-theme');
+            themeToggleButton.textContent = '🌙';
+        } else {
+            document.body.classList.remove('light-theme');
+            themeToggleButton.textContent = '☀️';
+        }
     }
 
-    function section(title, items) {
-      return `
-        <div class="sec">
-          <h4>${title}</h4>
-          <ul>${items.map(x=>`<li>${x}</li>`).join('')}</ul>
-        </div>
-      `;
+    function toggleTheme() {
+        const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('dashboard-theme', newTheme);
+        applyTheme(newTheme);
+    }
+    
+    themeToggleButton.addEventListener('click', toggleTheme);
+    
+    // Apply saved theme on load
+    const savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+    applyTheme(savedTheme);
+
+
+    // --- RENDERING FUNCTIONS ---
+    function renderTimeline(meta) {
+        const start = new Date(meta.startDate).getTime();
+        const end = new Date(meta.endDate).getTime();
+        const totalDuration = end - start;
+        if (totalDuration <= 0) return '';
+
+        const markers = meta.marcos.map(marco => {
+            const markerDate = new Date(marco.date).getTime();
+            const position = ((markerDate - start) / totalDuration) * 100;
+            return `<div class="timeline-marker" style="left: ${position}%; background-color: ${meta.cor};" data-label="${marco.label} (${new Date(marco.date).toLocaleDateString('pt-BR')})"></div>`;
+        }).join('');
+
+        return `<div class="timeline"><div class="timeline-bar">${markers}</div></div>`;
+    }
+
+    function renderHistory(meta) {
+        let items = meta.historico.map(h => `
+            <div class="history-item">
+                <small>${h.user} em ${new Date(h.date).toLocaleDateString('pt-BR')}</small>
+                ${h.comment}
+            </div>`).join('');
+        if (meta.historico.length === 0) {
+            items = '<p style="font-size:13px; color: var(--muted); text-align:center;">Nenhum registro no histórico.</p>';
+        }
+
+        return `
+            <div class="history-log">
+                <h4>Histórico de Atualizações</h4>
+                <div id="history-list-${meta.id}">${items}</div>
+                <form class="history-form" onsubmit="addHistoryEntry(${meta.id}, this.comment.value); this.comment.value=''; return false;">
+                    <textarea name="comment" placeholder="Adicionar nova atualização..." required></textarea>
+                    <button type="submit" class="btn" style="margin-top: 8px; width: 100%;">Adicionar Registro</button>
+                </form>
+            </div>`;
     }
 
     function openMeta(meta) {
       modalTitle.textContent = meta.titulo;
       modalDot.style.background = statusMap[meta.status]?.color || 'var(--accent)';
       modalBody.innerHTML = `
-        <div class="sections">
-          <div class="sec" style="grid-column: span 12;">
-            <h4>Objetivo</h4>
-            <p>${meta.objetivo}</p>
-          </div>
-          ${section('Entregas principais', meta.entregas)}
-          ${section('Indicadores e metas', meta.indicadores.concat(meta.metas || []))}
-          <div class="sec">
-            <h4>Prazo e marcos</h4>
-            <p>${meta.prazos}</p>
-          </div>
-          <div class="sec">
-            <h4>Riscos e mitigação</h4>
-            <p>${meta.riscos}</p>
-          </div>
+        <div class="modal-content">
+            <div>
+                <div class="sections">
+                    <div class="sec" style="grid-column: span 12;"><h4>Objetivo</h4><p>${meta.objetivo}</p></div>
+                    <div class="sec"><h4>Entregas</h4><ul>${meta.entregas.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+                    <div class="sec"><h4>Indicadores</h4><ul>${(meta.indicadores || []).map(x=>`<li>${x}</li>`).join('')}</ul></div>
+                    <div class="sec"><h4>Prazos</h4><p>${meta.prazos}</p></div>
+                    <div class="sec"><h4>Riscos</h4><p>${meta.riscos}</p></div>
+                </div>
+            </div>
+            <div>
+                ${renderHistory(meta)}
+            </div>
         </div>
         <div class="foot">
           <span class="pill"><span class="status-dot" style="background:${statusMap[meta.status]?.color || 'var(--accent)'}"></span>${statusMap[meta.status]?.label || 'Status'}</span>
-          <div style="display:flex;gap:8px;">
-            <button class="btn ghost" onclick="navigator.clipboard.writeText(JSON.stringify(meta,null,2))">Copiar JSON</button>
-            <button class="btn" onclick="modal.close()">Ok</button>
-          </div>
+          <button class="btn" onclick="modal.close()">Fechar</button>
         </div>
       `;
       modal.showModal();
@@ -463,43 +392,25 @@
       el.innerHTML = `
         <div class="head">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div class="badge" style="background: linear-gradient(135deg, ${meta.cor}33, rgba(255,255,255,.06)); border:1px solid rgba(159,179,200,.16);">
-              ${meta.id}
-            </div>
+            <div class="badge" style="background: linear-gradient(135deg, ${meta.cor}33, rgba(255,255,255,.06)); border:1px solid rgba(159,179,200,.16);">${meta.id}</div>
             <div>
               <h2>${meta.titulo}</h2>
               <div class="meta-tags">
-                <span class="pill" style="border-color:${meta.cor}; color:${meta.cor}">ID ${meta.id}</span>
+                <span class="pill" style="border-color:${meta.cor}; color:${meta.cor}">${meta.area}</span>
                 <span class="pill" style="border-color:${st.color};"><span class="status-dot" style="background:${st.color}"></span>${st.label}</span>
               </div>
             </div>
           </div>
-          <div class="donut" style="--p:${meta.progresso||0}; --c:${meta.cor}" data-label="${(meta.progresso||0)}%"></div>
-        </div>
-        <div class="sections">
-          <div class="sec" style="grid-column: span 12;">
-            <h4>Objetivo</h4>
-            <p>${meta.objetivo}</p>
-          </div>
-          <div class="sec">
-            <h4>Entregas principais</h4>
-            <ul>${meta.entregas.map(x=>`<li>${x}</li>`).join('')}</ul>
-          </div>
-          <div class="sec">
-            <h4>Indicadores e metas</h4>
-            <ul>${meta.indicadores.concat(meta.metas || []).map(x=>`<li>${x}</li>`).join('')}</ul>
-          </div>
-          <div class="sec">
-            <h4>Prazo e marcos</h4>
-            <p>${meta.prazos}</p>
-          </div>
-          <div class="sec">
-            <h4>Riscos e mitigação</h4>
-            <p>${meta.riscos}</p>
+          <div style="display:flex; align-items:center; gap: 8px;">
+            <label for="progress-${meta.id}" style="font-size:12px; color: var(--muted);">Progresso:</label>
+            <input type="number" min="0" max="100" value="${meta.progresso}" id="progress-${meta.id}" class="progress-input" oninput="updateProgress(${meta.id}, this.value)">
+            <div class="donut" data-id="${meta.id}" style="--p:${meta.progresso||0}; --c:${meta.cor}" data-label="${(meta.progresso||0)}%"></div>
           </div>
         </div>
+        <p style="color: var(--muted); margin: 4px 0 12px;">${meta.objetivo}</p>
+        ${renderTimeline(meta)}
         <div class="foot">
-          <button class="btn" onclick="openMeta(window.metas[${meta.id-1}])">Ver detalhes</button>
+          <button class="btn" onclick='openMeta(window.metas.find(m => m.id === ${meta.id}))'>Ver Detalhes e Histórico</button>
           <div class="meta-tags">
             <span class="tag">Atualizado: ${new Date().toLocaleDateString('pt-BR')}</span>
           </div>
@@ -513,64 +424,161 @@
       list.forEach(m => gridEl.appendChild(card(m)));
     }
 
+    // --- LOGIC & EVENT HANDLERS ---
+    function updateProgress(id, value) {
+        const progress = Math.max(0, Math.min(100, Number(value)));
+        const meta = metas.find(m => m.id === id);
+        if (meta) {
+            meta.progresso = progress;
+            const donut = document.querySelector(`.donut[data-id='${id}']`);
+            if (donut) {
+                donut.style.setProperty('--p', progress);
+                donut.setAttribute('data-label', `${progress}%`);
+            }
+        }
+    }
+    
+    function addHistoryEntry(metaId, comment) {
+        if (!comment.trim()) return;
+        const meta = metas.find(m => m.id === metaId);
+        if (meta) {
+            const newEntry = {
+                date: new Date().toISOString(),
+                user: 'Gestor', // Placeholder user
+                comment: comment
+            };
+            meta.historico.unshift(newEntry); // Add to the beginning
+            
+            const historyListEl = document.getElementById(`history-list-${metaId}`);
+            if(historyListEl) {
+                 let items = meta.historico.map(h => `
+                    <div class="history-item">
+                        <small>${h.user} em ${new Date(h.date).toLocaleDateString('pt-BR')}</small>
+                        ${h.comment}
+                    </div>`).join('');
+                historyListEl.innerHTML = items;
+            }
+        }
+    }
+
     function filterAndRender() {
       const q = document.getElementById('q').value.toLowerCase();
       const sf = document.getElementById('statusFilter').value;
       const filtered = metas.filter(m => {
-        const hit = [m.titulo, m.objetivo, m.prazos, m.riscos].join(' ').toLowerCase()
-          + ' ' + m.entregas.join(' ').toLowerCase()
-          + ' ' + m.indicadores.join(' ').toLowerCase()
-          + ' ' + (m.metas||[]).join(' ').toLowerCase();
+        const hit = [m.titulo, m.objetivo, m.area].join(' ').toLowerCase();
         const statusOk = (sf === 'all') || (m.status === sf);
         return statusOk && hit.includes(q);
       });
-      renderKpis(filtered);
       renderGrid(filtered);
     }
-
-    // Print content
-    function buildPrint() {
-      const bullets = [
-        "Unificar RH/folha das empresas no ERGON, com integridade e redução de custos.",
-        "Revisar os consignados para reduzir o CET, ampliar concorrência e fortalecer a governança de receita.",
-        "Implantar gateway seguro e auditável para remessas e retornos de pagamento, integrado ao ERGON e bancos.",
-        "Disponibilizar BI de Folha e Pessoas com dados confiáveis, D+1 e governança LGPD.",
-        "Entregar proposta legislativa de reestruturação de cargos com neutralidade orçamentária.",
-        "Alcançar eficiência tarifária no ACL com redução média ≥20% vs. cativo até 31/12/2025.",
-        "Certificar 4.000 capacitações com ≥80% de conclusão e ≥85% de satisfação."
-      ];
-      document.getElementById('execBullets').innerHTML = bullets.map(b=>`<li>${b}</li>`).join('');
-
-      const details = document.getElementById('printDetails');
-      details.innerHTML = metas.map(m => `
-        <div class="pb"></div>
-        <h2>${m.id}) ${m.titulo}</h2>
-        <p><strong>Objetivo:</strong> ${m.objetivo}</p>
-        <p><strong>Entregas principais:</strong></p>
-        <ul>${m.entregas.map(x=>`<li>${x}</li>`).join('')}</ul>
-        <p><strong>Indicadores e metas:</strong></p>
-        <ul>${(m.indicadores || []).concat(m.metas || []).map(x=>`<li>${x}</li>`).join('')}</ul>
-        <p><strong>Prazo/marcos:</strong> ${m.prazos}</p>
-        <p><strong>Riscos & mitigação:</strong> ${m.riscos}</p>
-      `).join('');
+    
+    function showView(viewName) {
+        mainDashboard.classList.add('hidden');
+        summarySection.classList.add('hidden');
+        analysisSection.classList.add('hidden');
+        if (viewName === 'dashboard') mainDashboard.classList.remove('hidden');
+        if (viewName === 'summary') summarySection.classList.remove('hidden');
+        if (viewName === 'analysis') analysisSection.classList.remove('hidden');
     }
 
+    function buildAndShowSummary() {
+        summaryContent.innerHTML = `
+            <h1>Plano de Metas Estratégicas 2025: Gestão, Pessoas e Eficiência</h1>
+            <h2>1. Resumo Executivo</h2>
+            <p>Este documento detalha as sete metas estratégicas prioritárias para 2025, focadas na modernização da gestão de pessoas, governança financeira, inteligência de dados e eficiência operacional. As iniciativas buscam resultados transformadores, como a unificação de sistemas de RH (ERGON) para maior controle e redução de custos; a revisão do ecossistema de consignados para beneficiar diretamente os servidores com crédito mais barato e transparente; e a automação de processos financeiros através de um gateway seguro.</p>
+            <p>Adicionalmente, o plano prevê a criação de uma plataforma de Business Intelligence para subsidiar decisões com dados precisos, a reestruturação de cargos sem impacto fiscal para otimizar a força de trabalho, a busca por eficiência energética com uma meta arrojada de 20% de economia no Mercado Livre de Energia, e um ambicioso programa de capacitação para 4.000 servidores, alinhado às competências do futuro.</p>
+            <p>Juntas, essas metas formam um programa coeso que visa aprimorar a governança, gerar economia para o erário, valorizar os servidores e preparar a administração municipal para os desafios futuros, utilizando tecnologia e dados como pilares centrais.</p>
+            
+            <hr style="border-color: var(--line); margin: 24px 0;">
+
+            <h2>2. Painel de Metas Estratégicas</h2>
+            ${metas.map(m => `
+                <div style="margin-bottom: 24px;">
+                    <h3>Meta ${m.id}: ${m.titulo}</h3>
+                    <ul style="list-style-type: none; padding-left: 10px;">
+                        <li><strong>Objetivo:</strong> ${m.objetivo}</li>
+                        <li><strong>Entregas Principais:</strong><ul>${m.entregas.map(e => `<li>${e}</li>`).join('')}</ul></li>
+                        <li><strong>Indicadores e Metas:</strong><ul>${(m.indicadores || []).map(i => `<li>${i}</li>`).join('')}</ul></li>
+                        <li><strong>Prazo/Marcos:</strong> ${m.prazos}</li>
+                        <li><strong>Riscos & Mitigação:</strong> ${m.riscos}</li>
+                    </ul>
+                </div>
+            `).join('')}
+        `;
+        showView('summary');
+    }
+    
+    function generateSummaryPDF() {
+        alert("A geração de PDF é bloqueada na pré-visualização, mas funcionará em um ambiente web real.");
+    }
+    
+    // --- ANALYSIS DASHBOARD ---
+    function buildAndShowAnalysis() {
+        showView('analysis');
+        Object.values(charts).forEach(chart => { if(chart.destroy) chart.destroy(); });
+
+        const textColor = document.body.classList.contains('light-theme') ? '#0f172a' : '#e5eef5';
+        const gridColor = document.body.classList.contains('light-theme') ? '#e2e8f0' : '#1f2a44';
+
+        const areas = [...new Set(metas.map(m => m.area))];
+        const progressByAreaData = {
+            labels: areas,
+            datasets: [{
+                label: 'Progresso Médio (%)',
+                data: areas.map(area => {
+                    const areaMetas = metas.filter(m => m.area === area);
+                    const totalProgress = areaMetas.reduce((sum, m) => sum + m.progresso, 0);
+                    return areaMetas.length > 0 ? (totalProgress / areaMetas.length).toFixed(2) : 0;
+                }),
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        };
+        charts.progressByArea = new Chart(document.getElementById('progressByAreaChart'), { type: 'bar', data: progressByAreaData, options: { responsive: true, indexAxis: 'y', scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: textColor } } } } });
+
+        const statusCounts = metas.reduce((acc, m) => {
+            acc[m.status] = (acc[m.status] || 0) + 1;
+            return acc;
+        }, {});
+        const statusDistributionData = {
+            labels: Object.keys(statusCounts).map(s => statusMap[s].label),
+            datasets: [{
+                data: Object.values(statusCounts),
+                backgroundColor: Object.keys(statusCounts).map(s => statusMap[s].color),
+            }]
+        };
+        charts.statusDistribution = new Chart(document.getElementById('statusDistributionChart'), { type: 'doughnut', data: statusDistributionData, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: textColor } } } } });
+
+        const risksByAreaData = {
+            labels: areas,
+            datasets: [{
+                label: 'Nº de Metas em Risco',
+                data: areas.map(area => metas.filter(m => m.area === area && m.status === 'risco').length),
+                backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1
+            }]
+        };
+        charts.risksByArea = new Chart(document.getElementById('risksByAreaChart'), { type: 'bar', data: risksByAreaData, options: { responsive: true, scales: { x: { ticks: { color: textColor }, grid: { color: gridColor } }, y: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { labels: { color: textColor } } } } });
+    }
+
+    // --- INITIALIZATION ---
     document.getElementById('q').addEventListener('input', filterAndRender);
     document.getElementById('statusFilter').addEventListener('change', filterAndRender);
-    document.getElementById('expandAll').addEventListener('click', () => {
-      document.querySelectorAll('.card .sections').forEach(sec => sec.style.maxHeight = 'unset');
-    });
-    document.getElementById('printBtn').addEventListener('click', () => {
-      buildPrint();
-      window.print();
-    });
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('summaryBtn').addEventListener('click', buildAndShowSummary);
+    document.getElementById('analysisBtn').addEventListener('click', buildAndShowAnalysis);
+    document.getElementById('backToDashboardBtn').addEventListener('click', () => showView('dashboard'));
+    document.getElementById('backToDashboardBtn2').addEventListener('click', () => showView('dashboard'));
+    document.getElementById('printSummaryBtn').addEventListener('click', generateSummaryPDF);
 
-    // Initial render
-    renderKpis(metas);
-    renderGrid(metas);
+    filterAndRender();
 
-    // Expor global para modais
     window.metas = metas;
+    window.updateProgress = updateProgress;
+    window.openMeta = openMeta;
+    window.addHistoryEntry = addHistoryEntry;
   </script>
 </body>
 </html>
